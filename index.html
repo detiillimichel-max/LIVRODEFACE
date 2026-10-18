@@ -3,13 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0f0f0f">
+  <meta name="theme-color" content="#07152e">
+  <meta name="description" content="Descubra vídeos públicos do Facebook no LIVRODEFACE.">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="LIVRODEFACE">
   <title>LIVRODEFACE — vídeos públicos</title>
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
     body { margin: 0; padding: 16px; background: #0f0f0f; color: #fff; font-family: system-ui, sans-serif; }
     header { max-width: 1000px; margin: 0 auto 18px; }
+    .topo { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    #instalar { display:none; border:1px solid #3b9dff; border-radius:999px; padding:10px 14px; background:#1268c4; color:white; font-weight:700; }
     h1 { margin: 0 0 6px; font-size: clamp(1.5rem, 5vw, 2rem); }
     .subtitulo { margin: 0; color: #b8b8b8; }
     #status { max-width: 1000px; margin: 14px auto; padding: 12px; border-radius: 10px; background: #202020; color: #e6e6e6; }
@@ -24,7 +31,7 @@
 </head>
 <body>
   <header>
-    <h1>LIVRODEFACE</h1>
+    <div class="topo"><h1>LIVRODEFACE</h1><button id="instalar" type="button">Instalar app</button></div>
     <p class="subtitulo">Descubra vídeos públicos do Facebook.</p>
   </header>
 
@@ -105,6 +112,24 @@
     }
 
     carregar();
+
+    let eventoInstalacao;
+    const botaoInstalar = document.getElementById("instalar");
+    window.addEventListener("beforeinstallprompt", (evento) => {
+      evento.preventDefault();
+      eventoInstalacao = evento;
+      botaoInstalar.style.display = "inline-block";
+    });
+    botaoInstalar.addEventListener("click", async () => {
+      if (!eventoInstalacao) return;
+      eventoInstalacao.prompt();
+      await eventoInstalacao.userChoice;
+      eventoInstalacao = null;
+      botaoInstalar.style.display = "none";
+    });
+    if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch((e) => console.warn("Service worker indisponível", e)));
+    }
   </script>
 </body>
 </html>
