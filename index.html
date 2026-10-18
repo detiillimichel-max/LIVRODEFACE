@@ -1,1 +1,110 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>LIVRODEFACE</title><style>body{background:#0f0f0f;color:#fff;font-family:sans-serif;padding:12px}.grid{display:grid;gap:12px;grid-template-columns:1fr}.card{background:#1e1e1e;border-radius:12px;overflow:hidden}iframe{width:100%;height:220px;border:0}</style></head><body><h1>LIVRODEFACE</h1><div id="app">Carregando...</div><script>async function carregar(){const r=await fetch('catalog.json?t='+Date.now());const dados=await r.json();const app=document.getElementById('app');app.innerHTML='<div class="grid"></div>';const grid=app.querySelector('.grid');dados.forEach(v=>{const d=document.createElement('div');d.className='card';d.innerHTML=`<iframe src="https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(v.url)}&show_text=false" allowfullscreen></iframe><p style="padding:8px">${v.titulo}</p>`;grid.appendChild(d);});}carregar();</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f0f0f">
+  <title>LIVRODEFACE — vídeos públicos</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; background: #0f0f0f; color: #fff; font-family: system-ui, sans-serif; }
+    header { max-width: 1000px; margin: 0 auto 18px; }
+    h1 { margin: 0 0 6px; font-size: clamp(1.5rem, 5vw, 2rem); }
+    .subtitulo { margin: 0; color: #b8b8b8; }
+    #status { max-width: 1000px; margin: 14px auto; padding: 12px; border-radius: 10px; background: #202020; color: #e6e6e6; }
+    #status.erro { border: 1px solid #9b4545; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; max-width: 1000px; margin: 0 auto; }
+    .card { min-width: 0; overflow: hidden; border: 1px solid #303030; border-radius: 12px; background: #1b1b1b; }
+    .player { width: 100%; height: clamp(220px, 56vw, 360px); display: block; border: 0; background: #000; }
+    .titulo { margin: 0; padding: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+    .vazio { max-width: 1000px; margin: 0 auto; padding: 18px; border-radius: 12px; background: #1b1b1b; color: #ddd; line-height: 1.5; }
+    @media (min-width: 720px) { body { padding: 24px; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>LIVRODEFACE</h1>
+    <p class="subtitulo">Descubra vídeos públicos do Facebook.</p>
+  </header>
+
+  <p id="status" role="status" aria-live="polite">Carregando catálogo…</p>
+  <main id="app" aria-label="Catálogo de vídeos"></main>
+
+  <script>
+    const app = document.getElementById('app');
+    const status = document.getElementById('status');
+
+    function urlFacebookValida(value) {
+      if (typeof value !== 'string' || !value.trim()) return false;
+      try {
+        const url = new URL(value);
+        return url.protocol === 'https:' &&
+          (url.hostname === 'facebook.com' ||
+           url.hostname.endsWith('.facebook.com') ||
+           url.hostname === 'fb.watch');
+      } catch {
+        return false;
+      }
+    }
+
+    function mostrarVazio(mensagem) {
+      const bloco = document.createElement('section');
+      bloco.className = 'vazio';
+      bloco.textContent = mensagem;
+      app.replaceChildren(bloco);
+    }
+
+    async function carregar() {
+      try {
+        const resposta = await fetch('./catalog.json', { cache: 'no-store' });
+        if (!resposta.ok) throw new Error('Não foi possível carregar o catálogo (HTTP ' + resposta.status + ').');
+
+        const dados = await resposta.json();
+        if (!Array.isArray(dados)) throw new Error('O arquivo catalog.json não contém uma lista válida.');
+
+        const videos = dados.filter((item) => item && urlFacebookValida(item.url));
+        status.textContent = videos.length + (videos.length === 1 ? ' vídeo no catálogo.' : ' vídeos no catálogo.');
+
+        if (videos.length === 0) {
+          mostrarVazio('O catálogo ainda não tem vídeos disponíveis. A busca automática precisa encontrar publicações de vídeo acessíveis pela API da Meta. O catálogo anterior não será apagado quando uma consulta falhar.');
+          return;
+        }
+
+        const grid = document.createElement('div');
+        grid.className = 'grid';
+
+        for (const video of videos) {
+          const card = document.createElement('article');
+          card.className = 'card';
+
+          const iframe = document.createElement('iframe');
+          iframe.className = 'player';
+          iframe.loading = 'lazy';
+          iframe.title = String(video.titulo || 'Vídeo do Facebook');
+          iframe.allow = 'autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share';
+          iframe.allowFullscreen = true;
+          iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+          iframe.src = 'https://www.facebook.com/plugins/video.php?href=' +
+            encodeURIComponent(video.url) + '&show_text=false';
+
+          const titulo = document.createElement('p');
+          titulo.className = 'titulo';
+          titulo.textContent = String(video.titulo || 'Vídeo do Facebook');
+
+          card.append(iframe, titulo);
+          grid.append(card);
+        }
+
+        app.replaceChildren(grid);
+      } catch (error) {
+        status.textContent = 'Não foi possível carregar os vídeos.';
+        status.classList.add('erro');
+        mostrarVazio(error.message || 'Ocorreu um erro ao carregar o catálogo. Tente novamente mais tarde.');
+      }
+    }
+
+    carregar();
+  </script>
+</body>
+</html>
