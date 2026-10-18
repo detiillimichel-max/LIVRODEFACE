@@ -30,11 +30,14 @@ jobs:
           node-version: 22
 
       - name: Buscar vídeos públicos no Facebook
+        id: buscar
+        continue-on-error: true
         run: node roteiros/buscar.js
         env:
           FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
 
       - name: Salvar catálogo atualizado
+        if: steps.buscar.outcome == 'success'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -47,13 +50,20 @@ jobs:
           fi
 
       - name: Configurar GitHub Pages
+        if: always()
         uses: actions/configure-pages@v4
 
       - name: Preparar site
+        if: always()
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
       - name: Publicar site
+        if: always()
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Avisar sobre falha na busca
+        if: steps.buscar.outcome == 'failure'
+        run: echo "::warning::O site foi publicado com o catálogo existente, mas a busca da Meta falhou. Confira IDs de páginas e permissões da aplicação."
