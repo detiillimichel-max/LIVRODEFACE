@@ -3,151 +3,113 @@ const path = require('node:path');
 
 const PAGES_FILE = path.join(__dirname, '../catalogo/pages.json');
 const CATALOG_FILE = path.join(__dirname, '../catalog.json');
-const API_VERSION = 'v26.0';
-const TOKEN = process.env.FB_ACCESS_TOKEN;
+const OEMBED_ENDPOINT = 'https://www.facebook.com/plugins/video/oembed.json';
 
-function lerJson(file, fallback) {
-  if (!fs.existsSync(file)) return fallback;
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch (error) {
-    throw new Error(`JSON inválido em ${path.relative(process.cwd(), file)}: ${error.message}`);
-  }
+function readJson(file) {
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-function urlFacebookValida(value) {
+function isFacebookVideoUrl(value) {
   if (typeof value !== 'string' || !value.trim()) return false;
   try {
     const url = new URL(value);
     return url.protocol === 'https:' &&
       (url.hostname === 'facebook.com' ||
        url.hostname.endsWith('.facebook.com') ||
-       url.hostname === 'fb.watch');
+       url.hostname === 'fb.watch') &&
+      !url.pathname.includes('/plugins/');
   } catch {
     return false;
   }
 }
 
-function pareceVideo(post) {
-  const anexos = post.attachments && Array.isArray(post.attachments.data)
-    ? post.attachments.data
-    : [];
-  const temVideo = anexos.some((anexo) =>
-    anexo.media_type === 'video' ||
-    anexo.type === 'video' ||
-    anexo.type === 'native_video'
-  );
-  const link = typeof post.permalink_url === 'string' ? post.permalink_url : '';
-  return temVideo || /\/(reel|videos|watch)\//i.test(link) || /\/watch\?v=/i.test(link);
-}
-
-async function buscar(pageId, categoria) {
-  const endpoint = new URL(`https://graph.facebook.com/${API_VERSION}/${encodeURIComponent(pageId)}/posts`);
-  endpoint.searchParams.set('fields', 'id,message,permalink_url,created_time,attachments{media_type,type,url,target}');
-  endpoint.searchParams.set('limit', '25');
+async function buscarOembed(videoUrl, categoria) {
+  const endpoint = new URL(OEMBED_ENDPOINT);
+  endpoint.searchParams.set('url', videoUrl);
 
   const response = await fetch(endpoint, {
-    headers: { Authorization: `Bearer ${TOKEN}` }
+    headers: { Accept: 'application/json' }
   });
 
-  let payload;
-  try {
-    payload = await response.json();
-  } catch {
-    throw new Error(`Meta respondeu algo que não é JSON para o identificador ${pageId} (HTTP ${response.status}).`);
+  if (!response.ok) {
+    throw new Error(`oEmbed recusou a URL (HTTP ${response.status})`);
   }
 
-  if (!response.ok || payload.error) {
-    const metaError = payload.error || {};
-    const code = metaError.code ? ` código ${metaError.code}` : '';
-    throw new Error(`Meta rejeitou ${pageId} (HTTP ${response.status}${code}): ${metaError.message || 'resposta sem detalhes'}`);
+  const data = await response.json();
+  if (!data || typeof data !== 'object' || !data.html) {
+    throw new Error('A resposta oEmbed não confirmou um conteúdo incorporável.');
   }
 
-  if (!Array.isArray(payload.data)) {
-    throw new Error(`Resposta inesperada da Meta para ${pageId}: campo data ausente.`);
-  }
-
-  return payload.data
-    .filter((post) => post && post.id && urlFacebookValida(post.permalink_url) && pareceVideo(post))
-    .map((post) => ({
-      id: String(post.id),
-      titulo: String(post.message || 'Vídeo do Facebook').trim().slice(0, 180) || 'Vídeo do Facebook',
-      categoria,
-      url: post.permalink_url,
-      ...(post.created_time ? { data: post.created_time } : {})
-    }));
+  return {
+    id: videoUrl,
+    titulo: typeof data.title === 'string' && data.title.trim()
+      ? data.title.trim().slice(0, 180)
+      : 'Vídeo público do Facebook',
+    categoria,
+    url: videoUrl,
+    thumb: typeof data.thumbnail_url === 'string' ? data.thumbnail_url : ''
+  };
 }
 
 async function main() {
-  if (!TOKEN || !TOKEN.trim()) {
-    throw new Error('O segredo FB_ACCESS_TOKEN não está configurado no GitHub Actions.');
-  }
-
-  const pages = lerJson(PAGES_FILE, null);
+  const pages = readJson(PAGES_FILE);
   if (!pages || typeof pages !== 'object' || Array.isArray(pages)) {
-    throw new Error('catalogo/pages.json precisa conter um objeto JSON com categorias e IDs de Páginas.');
+    throw new Error('catalogo/pages.json precisa ser um objeto JSON com listas por categoria.');
   }
 
-  const antigo = lerJson(CATALOG_FILE, []);
-  if (!Array.isArray(antigo)) {
-    throw new Error('catalog.json precisa conter uma lista JSON; o arquivo existente foi preservado.');
+  const oldCatalog = fs.existsSync(CATALOG_FILE) ? readJson(CATALOG_FILE) : [];
+  if (!Array.isArray(oldCatalog)) {
+    throw new Error('catalog.json não contém uma lista válida. O arquivo foi preservado.');
   }
 
-  const encontrados = [];
-  const falhas = [];
-  let consultasBemSucedidas = 0;
-
-  for (const [categoria, ids] of Object.entries(pages)) {
-    if (!Array.isArray(ids)) {
-      falhas.push(`Categoria "${categoria}" não contém uma lista de IDs.`);
-      continue;
+  const validUrls = [];
+  for (const [categoria, urls] of Object.entries(pages)) {
+    if (!Array.isArray(urls)) {
+      throw new Error(`A categoria "${categoria}" precisa conter uma lista de URLs.`);
     }
-
-    for (const pageId of ids) {
-      if (typeof pageId !== 'string' && typeof pageId !== 'number') {
-        falhas.push(`ID inválido na categoria "${categoria}".`);
-        continue;
+    for (const url of urls) {
+      if (!isFacebookVideoUrl(url)) {
+        throw new Error(`URL inválida na categoria "${categoria}". Use o link completo de um vídeo público do Facebook.`);
       }
-
-      try {
-        const videos = await buscar(String(pageId), categoria);
-        consultasBemSucedidas += 1;
-        encontrados.push(...videos);
-        console.log(`Fonte ${pageId}: ${videos.length} vídeo(s) reconhecido(s).`);
-      } catch (error) {
-        falhas.push(error.message);
-        console.error(error.message);
-      }
+      validUrls.push({ url, categoria });
     }
   }
 
-  if (consultasBemSucedidas === 0) {
-    throw new Error('Nenhuma fonte pôde ser consultada. catalog.json não será alterado.');
+  if (validUrls.length === 0) {
+    throw new Error('Nenhuma URL foi configurada em catalogo/pages.json. catalog.json não será alterado.');
   }
 
-  if (encontrados.length === 0) {
-    if (falhas.length > 0) {
-      throw new Error(`Nenhum vídeo novo foi encontrado e ${falhas.length} consulta(s) falharam. catalog.json foi preservado.`);
-    }
-    console.warn('As fontes responderam, mas nenhum vídeo público foi identificado. catalog.json existente foi preservado.');
-    return;
-  }
-
-  const porUrl = new Map();
-  for (const item of [...antigo, ...encontrados]) {
-    if (item && urlFacebookValida(item.url)) {
-      const chave = item.url;
-      if (!porUrl.has(chave)) porUrl.set(chave, item);
-      else porUrl.set(chave, { ...porUrl.get(chave), ...item });
+  const validated = [];
+  const failures = [];
+  for (const item of validUrls) {
+    try {
+      const video = await buscarOembed(item.url, item.categoria);
+      validated.push(video);
+      console.log(`oEmbed validado: ${item.url}`);
+    } catch (error) {
+      failures.push(`${item.url}: ${error.message}`);
+      console.error(`oEmbed falhou para ${item.url}: ${error.message}`);
     }
   }
 
-  const catalogo = [...porUrl.values()];
-  fs.writeFileSync(CATALOG_FILE, JSON.stringify(catalogo, null, 2) + '\n', 'utf8');
-  console.log(`Catálogo salvo com ${catalogo.length} item(ns), incluindo ${encontrados.length} resultado(s) da busca.`);
+  if (validated.length === 0) {
+    throw new Error('Nenhum vídeo foi validado pelo oEmbed. catalog.json existente foi preservado.');
+  }
 
-  if (falhas.length > 0) {
-    console.warn(`Atenção: ${falhas.length} consulta(s) falharam. O catálogo anterior foi mesclado para evitar perda de itens.`);
+  // Mantém itens antigos e atualiza/adiciona somente URLs validadas pelo oEmbed.
+  const merged = new Map();
+  for (const item of oldCatalog) {
+    if (item && isFacebookVideoUrl(item.url)) merged.set(item.url, item);
+  }
+  for (const item of validated) {
+    merged.set(item.url, { ...(merged.get(item.url) || {}), ...item });
+  }
+
+  fs.writeFileSync(CATALOG_FILE, JSON.stringify([...merged.values()], null, 2) + '\n', 'utf8');
+  console.log(`Salvo ${validated.length} vídeo(s) validados; catálogo total: ${merged.size}.`);
+
+  if (failures.length) {
+    console.warn(`${failures.length} URL(s) falharam e foram ignoradas; o catálogo anterior foi mantido.`);
   }
 }
 
