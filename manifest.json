@@ -1,0 +1,21 @@
+{
+  "id": "./",
+  "name": "LIVRODEFACE",
+  "short_name": "Livrodeface",
+  "description": "Descubra vídeos públicos do Facebook.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07152e",
+  "theme_color": "#07152e",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
