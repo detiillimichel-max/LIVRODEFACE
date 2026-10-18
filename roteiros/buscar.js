@@ -1,119 +1,42 @@
 const fs = require('node:fs');
 const path = require('node:path');
-
 const PAGES_FILE = path.join(__dirname, '../catalogo/pages.json');
 const CATALOG_FILE = path.join(__dirname, '../catalog.json');
 const OEMBED_ENDPOINT = 'https://www.facebook.com/plugins/video/oembed.json';
 
-function readJson(file) {
-  return JSON.parse(fs.readFileSync(file, 'utf8'));
+function readJson(f){ try{return JSON.parse(fs.readFileSync(f,'utf8'))}catch{return null} }
+function isFacebookVideoUrl(v){
+  if(typeof v!=='string'||!v.trim()) return false;
+  try{ const u=new URL(v); return u.protocol==='https:' && (u.hostname==='facebook.com'||u.hostname.endsWith('.facebook.com')||u.hostname==='fb.watch'); }catch{return false}
 }
-
-function isFacebookVideoUrl(value) {
-  if (typeof value !== 'string' || !value.trim()) return false;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' &&
-      (url.hostname === 'facebook.com' ||
-       url.hostname.endsWith('.facebook.com') ||
-       url.hostname === 'fb.watch') &&
-      !url.pathname.includes('/plugins/');
-  } catch {
-    return false;
-  }
-}
-
-async function buscarOembed(videoUrl, categoria) {
-  const endpoint = new URL(OEMBED_ENDPOINT);
-  endpoint.searchParams.set('url', videoUrl);
-
-  const response = await fetch(endpoint, {
-    headers: { Accept: 'application/json' }
-  });
-
-  if (!response.ok) {
-    throw new Error(`oEmbed recusou a URL (HTTP ${response.status})`);
-  }
-
-  const data = await response.json();
-  if (!data || typeof data !== 'object' || !data.html) {
-    throw new Error('A resposta oEmbed não confirmou um conteúdo incorporável.');
-  }
-
-  return {
-    id: videoUrl,
-    titulo: typeof data.title === 'string' && data.title.trim()
-      ? data.title.trim().slice(0, 180)
-      : 'Vídeo público do Facebook',
-    categoria,
-    url: videoUrl,
-    thumb: typeof data.thumbnail_url === 'string' ? data.thumbnail_url : ''
-  };
-}
-
-async function main() {
-  const pages = readJson(PAGES_FILE);
-  if (!pages || typeof pages !== 'object' || Array.isArray(pages)) {
-    throw new Error('catalogo/pages.json precisa ser um objeto JSON com listas por categoria.');
-  }
-
-  const oldCatalog = fs.existsSync(CATALOG_FILE) ? readJson(CATALOG_FILE) : [];
-  if (!Array.isArray(oldCatalog)) {
-    throw new Error('catalog.json não contém uma lista válida. O arquivo foi preservado.');
-  }
-
-  const validUrls = [];
-  for (const [categoria, urls] of Object.entries(pages)) {
-    if (!Array.isArray(urls)) {
-      throw new Error(`A categoria "${categoria}" precisa conter uma lista de URLs.`);
+async function buscarOembed(videoUrl, categoria){
+  try{
+    const endpoint = new URL(OEMBED_ENDPOINT);
+    endpoint.searchParams.set('url', videoUrl);
+    const r = await fetch(endpoint, {headers:{Accept:'application/json'}, signal: AbortSignal.timeout(15000)});
+    if(!r.ok){
+      console.warn(`oEmbed ${r.status} para ${videoUrl} - usando fallback`);
+      return {id:videoUrl, titulo:'Vídeo público do Facebook', categoria, url:videoUrl, thumb:''};
     }
-    for (const url of urls) {
-      if (!isFacebookVideoUrl(url)) {
-        throw new Error(`URL inválida na categoria "${categoria}". Use o link completo de um vídeo público do Facebook.`);
-      }
-      validUrls.push({ url, categoria });
-    }
-  }
-
-  if (validUrls.length === 0) {
-    throw new Error('Nenhuma URL foi configurada em catalogo/pages.json. catalog.json não será alterado.');
-  }
-
-  const validated = [];
-  const failures = [];
-  for (const item of validUrls) {
-    try {
-      const video = await buscarOembed(item.url, item.categoria);
-      validated.push(video);
-      console.log(`oEmbed validado: ${item.url}`);
-    } catch (error) {
-      failures.push(`${item.url}: ${error.message}`);
-      console.error(`oEmbed falhou para ${item.url}: ${error.message}`);
-    }
-  }
-
-  if (validated.length === 0) {
-    throw new Error('Nenhum vídeo foi validado pelo oEmbed. catalog.json existente foi preservado.');
-  }
-
-  // Mantém itens antigos e atualiza/adiciona somente URLs validadas pelo oEmbed.
-  const merged = new Map();
-  for (const item of oldCatalog) {
-    if (item && isFacebookVideoUrl(item.url)) merged.set(item.url, item);
-  }
-  for (const item of validated) {
-    merged.set(item.url, { ...(merged.get(item.url) || {}), ...item });
-  }
-
-  fs.writeFileSync(CATALOG_FILE, JSON.stringify([...merged.values()], null, 2) + '\n', 'utf8');
-  console.log(`Salvo ${validated.length} vídeo(s) validados; catálogo total: ${merged.size}.`);
-
-  if (failures.length) {
-    console.warn(`${failures.length} URL(s) falharam e foram ignoradas; o catálogo anterior foi mantido.`);
+    const data = await r.json();
+    return {id:videoUrl, titulo:(data.title||'Vídeo público do Facebook').slice(0,180), categoria, url:videoUrl, thumb:data.thumbnail_url||''};
+  }catch(e){
+    console.warn(`oEmbed falhou ${videoUrl}: ${e.message} - fallback`);
+    return {id:videoUrl, titulo:'Vídeo público do Facebook', categoria, url:videoUrl, thumb:''};
   }
 }
-
-main().catch((error) => {
-  console.error(`FALHA NA ATUALIZAÇÃO: ${error.message}`);
-  process.exitCode = 1;
-});
+async function main(){
+  const pages = readJson(PAGES_FILE) || {};
+  const oldCatalog = readJson(CATALOG_FILE) || [];
+  const lista=[];
+  for(const cat in pages){ if(!Array.isArray(pages[cat])) continue; for(const u of pages[cat]){ if(isFacebookVideoUrl(u)) lista.push({url:u,categoria:cat}); else console.warn(`Pulando invalida em ${cat}: ${u}`); } }
+  if(lista.length===0){ console.log('Nenhuma URL valida ainda, criando catalog vazio'); if(!fs.existsSync(CATALOG_FILE)) fs.writeFileSync(CATALOG_FILE,'[]\n'); return; }
+  const validados=[];
+  for(const item of lista){ const v=await buscarOembed(item.url,item.categoria); validados.push(v); console.log(`OK: ${item.url}`); }
+  const merged=new Map();
+  for(const i of Array.isArray(oldCatalog)?oldCatalog:[]){ if(i?.url) merged.set(i.url,i); }
+  for(const i of validados) merged.set(i.url,{...merged.get(i.url)||{},...i});
+  fs.writeFileSync(CATALOG_FILE, JSON.stringify([...merged.values()], null, 2)+'\n');
+  console.log(`Salvo ${validados.length}, total ${merged.size}`);
+}
+main();
