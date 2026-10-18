@@ -1,135 +1,61 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#07152e">
-  <meta name="description" content="Descubra vídeos públicos do Facebook no LIVRODEFACE.">
-  <link rel="manifest" href="./manifest.json">
-  <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="LIVRODEFACE">
-  <title>LIVRODEFACE — vídeos públicos</title>
-  <style>
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
-    body { margin: 0; padding: 16px; background: #0f0f0f; color: #fff; font-family: system-ui, sans-serif; }
-    header { max-width: 1000px; margin: 0 auto 18px; }
-    .topo { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-    #instalar { display:none; border:1px solid #3b9dff; border-radius:999px; padding:10px 14px; background:#1268c4; color:white; font-weight:700; }
-    h1 { margin: 0 0 6px; font-size: clamp(1.5rem, 5vw, 2rem); }
-    .subtitulo { margin: 0; color: #b8b8b8; }
-    #status { max-width: 1000px; margin: 14px auto; padding: 12px; border-radius: 10px; background: #202020; color: #e6e6e6; }
-    #status.erro { border: 1px solid #9b4545; }
-    .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; max-width: 1000px; margin: 0 auto; }
-    .card { min-width: 0; overflow: hidden; border: 1px solid #303030; border-radius: 12px; background: #1b1b1b; }
-    .player { width: 100%; height: clamp(220px, 56vw, 360px); display: block; border: 0; background: #000; }
-    .titulo { margin: 0; padding: 12px; line-height: 1.4; overflow-wrap: anywhere; }
-    .vazio { max-width: 1000px; margin: 0 auto; padding: 18px; border-radius: 12px; background: #1b1b1b; color: #ddd; line-height: 1.5; }
-    @media (min-width: 720px) { body { padding: 24px; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  </style>
-</head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#07152e"><meta name="description" content="Seus vídeos salvos do Facebook no LIVRODEFACE.">
+<link rel="manifest" href="./manifest.json"><link rel="icon" href="./icon.svg" type="image/svg+xml">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="LIVRODEFACE">
+<title>LIVRODEFACE — seus vídeos</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0b0b0d;color:#f7f7f7;font-family:system-ui,-apple-system,sans-serif}
+header{padding:26px 18px 18px;background:#07152e;border-bottom:1px solid #24324b}header>div{max-width:1200px;margin:auto}
+.topo{display:flex;align-items:center;justify-content:space-between;gap:12px}h1{margin:0;font-size:clamp(1.5rem,5vw,2.2rem)}.subtitulo{margin:8px 0 0;color:#c3ccdc}
+#instalar{display:none;border:0;border-radius:999px;padding:10px 14px;background:#1677e8;color:#fff;font-weight:700}
+#status{margin:16px auto;max-width:1200px;padding:12px 16px;background:#1c1c20;border-radius:10px;color:#ddd}
+#status.erro{border:1px solid #a33}.secao{margin:22px 0 28px}.secao h2{font-size:1.1rem;margin:0 18px 12px;color:#fff}
+.carrossel{display:flex;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;padding:0 18px 12px;scrollbar-width:thin}
+.card{flex:0 0 min(82vw,340px);min-width:0;overflow:hidden;scroll-snap-align:start;border:1px solid #303036;border-radius:14px;background:#1b1b20}
+.player{display:block;width:100%;height:clamp(200px,56vw,300px);border:0;background:#000}
+.titulo{padding:12px;margin:0;font-weight:600;line-height:1.4;overflow-wrap:anywhere}.acoes{display:flex;gap:8px;padding:0 12px 12px}
+.abrir{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;background:#1769d2;color:white;padding:10px 13px;border-radius:8px;font-size:.9rem;font-weight:650}
+.vazio{margin:18px;padding:18px;border-radius:12px;background:#1b1b20;color:#ddd;line-height:1.5}
+@media(min-width:800px){.card{flex-basis:320px}header{padding:30px 24px} .carrossel{padding-left:24px}.secao h2{margin-left:24px}}
+</style></head>
 <body>
-  <header>
-    <div class="topo"><h1>LIVRODEFACE</h1><button id="instalar" type="button">Instalar app</button></div>
-    <p class="subtitulo">Descubra vídeos públicos do Facebook.</p>
-  </header>
-
-  <p id="status" role="status" aria-live="polite">Carregando catálogo…</p>
-  <main id="app" aria-label="Catálogo de vídeos"></main>
-
-  <script>
-    const app = document.getElementById('app');
-    const status = document.getElementById('status');
-
-    function urlFacebookValida(value) {
-      if (typeof value !== 'string' || !value.trim()) return false;
-      try {
-        const url = new URL(value);
-        return url.protocol === 'https:' &&
-          (url.hostname === 'facebook.com' ||
-           url.hostname.endsWith('.facebook.com') ||
-           url.hostname === 'fb.watch');
-      } catch {
-        return false;
-      }
-    }
-
-    function mostrarVazio(mensagem) {
-      const bloco = document.createElement('section');
-      bloco.className = 'vazio';
-      bloco.textContent = mensagem;
-      app.replaceChildren(bloco);
-    }
-
-    async function carregar() {
-      try {
-        const resposta = await fetch('./catalog.json', { cache: 'no-store' });
-        if (!resposta.ok) throw new Error('Não foi possível carregar o catálogo (HTTP ' + resposta.status + ').');
-
-        const dados = await resposta.json();
-        if (!Array.isArray(dados)) throw new Error('O arquivo catalog.json não contém uma lista válida.');
-
-        const videos = dados.filter((item) => item && urlFacebookValida(item.url));
-        status.textContent = videos.length + (videos.length === 1 ? ' vídeo no catálogo.' : ' vídeos no catálogo.');
-
-        if (videos.length === 0) {
-          mostrarVazio('O catálogo ainda não tem vídeos disponíveis. A busca automática precisa encontrar publicações de vídeo acessíveis pela API da Meta. O catálogo anterior não será apagado quando uma consulta falhar.');
-          return;
-        }
-
-        const grid = document.createElement('div');
-        grid.className = 'grid';
-
-        for (const video of videos) {
-          const card = document.createElement('article');
-          card.className = 'card';
-
-          const iframe = document.createElement('iframe');
-          iframe.className = 'player';
-          iframe.loading = 'lazy';
-          iframe.title = String(video.titulo || 'Vídeo do Facebook');
-          iframe.allow = 'autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share';
-          iframe.allowFullscreen = true;
-          iframe.referrerPolicy = 'strict-origin-when-cross-origin';
-          iframe.src = 'https://www.facebook.com/plugins/video.php?href=' +
-            encodeURIComponent(video.url) + '&show_text=false';
-
-          const titulo = document.createElement('p');
-          titulo.className = 'titulo';
-          titulo.textContent = String(video.titulo || 'Vídeo do Facebook');
-
-          card.append(iframe, titulo);
-          grid.append(card);
-        }
-
-        app.replaceChildren(grid);
-      } catch (error) {
-        status.textContent = 'Não foi possível carregar os vídeos.';
-        status.classList.add('erro');
-        mostrarVazio(error.message || 'Ocorreu um erro ao carregar o catálogo. Tente novamente mais tarde.');
-      }
-    }
-
-    carregar();
-
-    let eventoInstalacao;
-    const botaoInstalar = document.getElementById("instalar");
-    window.addEventListener("beforeinstallprompt", (evento) => {
-      evento.preventDefault();
-      eventoInstalacao = evento;
-      botaoInstalar.style.display = "inline-block";
-    });
-    botaoInstalar.addEventListener("click", async () => {
-      if (!eventoInstalacao) return;
-      eventoInstalacao.prompt();
-      await eventoInstalacao.userChoice;
-      eventoInstalacao = null;
-      botaoInstalar.style.display = "none";
-    });
-    if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-      window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch((e) => console.warn("Service worker indisponível", e)));
-    }
-  </script>
-</body>
-</html>
+<header><div><div class="topo"><h1>LIVRODEFACE</h1><button id="instalar" type="button">Instalar app</button></div><p class="subtitulo">Seus vídeos salvos do Facebook, organizados em carrosséis.</p></div></header>
+<p id="status" role="status" aria-live="polite">Carregando seus links…</p><main id="app" aria-label="Carrosséis de vídeos"></main>
+<script>
+const app=document.getElementById('app'),status=document.getElementById('status');
+function urlFacebookValida(value){if(typeof value!=='string'||!value.trim())return false;try{const u=new URL(value);return u.protocol==='https:'&&(u.hostname==='facebook.com'||u.hostname.endsWith('.facebook.com')||u.hostname==='fb.watch')}catch{return false}}
+function criarLink(url){const a=document.createElement('a');a.className='abrir';a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Abrir no Facebook';return a}
+function renderizar(videos){
+ const grupos=new Map();
+ for(const v of videos){const cat=String(v.categoria||'Meus vídeos salvos').trim()||'Meus vídeos salvos';if(!grupos.has(cat))grupos.set(cat,[]);grupos.get(cat).push(v)}
+ app.replaceChildren();
+ for(const [categoria,lista] of grupos){
+  const sec=document.createElement('section');sec.className='secao';const h=document.createElement('h2');h.textContent=categoria+' · '+lista.length;const faixa=document.createElement('div');faixa.className='carrossel';
+  for(const video of lista){
+   const card=document.createElement('article');card.className='card';
+   const iframe=document.createElement('iframe');iframe.className='player';iframe.loading='lazy';iframe.title=String(video.titulo||'Vídeo salvo do Facebook');iframe.allow='autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share';iframe.allowFullscreen=true;iframe.referrerPolicy='strict-origin-when-cross-origin';iframe.src='https://www.facebook.com/plugins/video.php?href='+encodeURIComponent(video.url)+'&show_text=false';
+   const titulo=document.createElement('p');titulo.className='titulo';titulo.textContent=String(video.titulo||'Vídeo salvo do Facebook');
+   const acoes=document.createElement('div');acoes.className='acoes';acoes.append(criarLink(video.url));card.append(iframe,titulo,acoes);faixa.append(card)
+  }sec.append(h,faixa);app.append(sec)
+ }
+}
+async function carregar(){
+ try{
+  // Primeiro tenta o catálogo de reprodução; se a exportação pessoal estiver em arquivo separado, carrega também.
+  const respostas=await Promise.allSettled([fetch('./catalog.json',{cache:'no-store'}),fetch('./catalogo/candidatos.json',{cache:'no-store'})]);
+  const dados=[];let erros=0;
+  for(const r of respostas){if(r.status!=='fulfilled'||!r.value.ok){erros++;continue}try{const j=await r.value.json();if(Array.isArray(j))dados.push(...j)}catch{erros++}}
+  const unicos=new Map();for(const v of dados){if(v&&urlFacebookValida(v.url)&&!unicos.has(v.url))unicos.set(v.url,v)}
+  const videos=[...unicos.values()];
+  status.textContent=videos.length+' links de vídeo carregados'+(erros?' (uma fonte indisponível)':'')+'.';
+  if(!videos.length){app.innerHTML='<section class="vazio">Nenhum link encontrado. O arquivo com seus links exportados precisa estar em catalogo/candidatos.json. Quando o link não aceitar incorporação, use “Abrir no Facebook”.</section>';return}
+  renderizar(videos)
+ }catch(e){status.textContent='Erro ao carregar os links.';status.classList.add('erro');app.textContent=e.message||'Erro inesperado.'}
+}
+carregar();
+let eventoInstalacao;const botaoInstalar=document.getElementById('instalar');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();eventoInstalacao=e;botaoInstalar.style.display='inline-block'});botaoInstalar.addEventListener('click',async()=>{if(!eventoInstalacao)return;eventoInstalacao.prompt();await eventoInstalacao.userChoice;eventoInstalacao=null;botaoInstalar.style.display='none'});
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(e=>console.warn('Service worker indisponível',e)));
+</script></body></html>
