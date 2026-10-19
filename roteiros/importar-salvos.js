@@ -51,10 +51,13 @@ function main() {
     if (f.url) {
       const url = f.url;
       const videoLike = /\/(reel|videos?)\//i.test(new URL(url).pathname) || /fb\.watch/i.test(url);
-      if (videoLike && !found.has(url)) found.set(url, {
-        id: url, url, titulo: f.titulo || nextCategory || 'Vídeo salvo do Facebook',
-        categoria: nextCategory || 'Meus vídeos salvos', fonte: 'salvos.json'
-      });
+      if (videoLike && !found.has(url)) {
+        const tipo = /\/reel\//i.test(new URL(url).pathname) ? 'Reels do Facebook' : 'Vídeos do Facebook';
+        found.set(url, {
+          id: url, url, titulo: f.titulo || 'Vídeo salvo do Facebook',
+          categoria: tipo, fonte: 'salvos.json'
+        });
+      }
     }
     for (const [key, value] of Object.entries(node)) {
       if (key === 'title' && typeof value === 'string') continue;
@@ -63,7 +66,7 @@ function main() {
       else if ((key === 'href' || key === 'url' || key === 'value') && typeof value === 'string') {
         const url = cleanUrl(value);
         if (url && /\/(reel|videos?)\//i.test(new URL(url).pathname) && !found.has(url)) {
-          found.set(url, { id: url, url, titulo: nextCategory, categoria: nextCategory, fonte: 'salvos.json' });
+          found.set(url, { id: url, url, titulo: 'Vídeo salvo do Facebook', categoria: /\/reel\//i.test(new URL(url).pathname) ? 'Reels do Facebook' : 'Vídeos do Facebook', fonte: 'salvos.json' });
         }
       }
     }
