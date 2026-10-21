@@ -26,10 +26,10 @@ h1{margin:0;font-size:clamp(1.5rem,5vw,2.2rem);letter-spacing:-.035em}
 main{padding:0 0 34px;min-height:35vh}
 .secao{margin:24px 0 30px}
 .secao h2{font-size:clamp(1.08rem,3.8vw,1.4rem);font-weight:650;letter-spacing:-.025em;margin:0 18px 12px;color:#e7edf5}
-.carrossel{display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:18px;padding:0 18px 10px;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.carrossel{display:flex;flex-flow:row nowrap;align-items:stretch;gap:12px;width:100%;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:18px;padding:0 18px 14px;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none;cursor:grab}
 .carrossel::-webkit-scrollbar{display:none}
-.card{position:relative;flex:0 0 clamp(148px,43vw,220px);min-width:0;overflow:hidden;scroll-snap-align:start;border:1px solid var(--borda);border-radius:13px;background:#121923;contain:content}
-.capa{position:relative;display:block;width:100%;aspect-ratio:9/16;padding:0;border:0;overflow:hidden;background:linear-gradient(145deg,#182b43,#10151e 60%,#263a4b);color:white;cursor:pointer}
+.card{position:relative;flex:0 0 clamp(132px,39vw,190px);width:clamp(132px,39vw,190px);min-width:0;overflow:hidden;scroll-snap-align:start;border:1px solid var(--borda);border-radius:13px;background:#121923;contain:content}
+.capa{position:relative;display:block;width:100%;aspect-ratio:9/16;max-height:340px;padding:0;border:0;overflow:hidden;background:linear-gradient(145deg,#182b43,#10151e 60%,#263a4b);color:white;cursor:pointer}
 .capa::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 38%,rgba(67,119,169,.32),transparent 55%),linear-gradient(0deg,rgba(0,0,0,.82),transparent 55%)}
 .capa::after{content:"";position:absolute;inset:auto 0 0;height:38%;background:linear-gradient(transparent,rgba(0,0,0,.65))}
 .capa-inicial{position:absolute;inset:12px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:750;font-size:clamp(1rem,3.5vw,1.6rem);line-height:1.1;letter-spacing:.02em;color:#e5edf7;overflow-wrap:anywhere;text-shadow:0 2px 10px #000}
@@ -42,7 +42,7 @@ main{padding:0 0 34px;min-height:35vh}
 .acoes{padding:0 11px 12px}
 .abrir{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;background:#1769d2;color:white;padding:9px 11px;border-radius:8px;font-size:.82rem;font-weight:650;min-height:38px}
 .vazio{margin:18px;padding:18px;border-radius:12px;background:#111923;color:#ddd;line-height:1.5}
-@media(min-width:700px){header{padding:30px 24px}.subtitulo{font-size:1.1rem}#status{margin-left:24px;margin-right:24px}.secao h2{margin-left:24px}.carrossel{padding-left:24px;padding-right:24px;gap:15px}.card{flex-basis:clamp(190px,22vw,245px)}}
+@media(min-width:700px){header{padding:30px 24px}.subtitulo{font-size:1.1rem}#status{margin-left:24px;margin-right:24px}.secao h2{margin-left:24px}.carrossel{padding-left:24px;padding-right:24px;gap:15px}.card{flex:0 0 clamp(170px,18vw,220px);width:clamp(170px,18vw,220px)}.capa{max-height:390px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style>
 </head>
@@ -52,7 +52,7 @@ main{padding:0 0 34px;min-height:35vh}
 <main id="app" aria-label="Coleções de vídeos salvos"></main>
 <script>
 const app=document.getElementById('app'),status=document.getElementById('status');
-const CACHE_KEY='livrodeface-catalogo-v3';
+const CACHE_KEY='livrodeface-catalogo-v4';
 const FONTES=['./catalogo/colecoes.json','./catalogo/candidatos.json','./catalog.json'];
 function urlFacebookValida(value){if(typeof value!=='string'||!value.trim())return false;try{const u=new URL(value);return u.protocol==='https:'&&(u.hostname==='facebook.com'||u.hostname.endsWith('.facebook.com')||u.hostname==='fb.watch')}catch{return false}}
 function criarLink(url){const a=document.createElement('a');a.className='abrir';a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Abrir no Facebook';return a}
@@ -95,6 +95,8 @@ async function buscarJson(caminho){const resposta=await fetch(caminho,{cache:'no
 async function atualizarCatalogo(){const resultados=await Promise.allSettled(FONTES.map(buscarJson));let dados=[],fontesOk=0;for(const r of resultados){if(r.status==='fulfilled'&&Array.isArray(r.value)){dados.push(...r.value);fontesOk++}}const videos=normalizar(dados);if(videos.length){salvarCacheLocal(videos);mostrar(videos,'catálogo atualizado');return}if(!app.childElementCount){status.classList.add('erro');status.textContent='Não foi possível encontrar o catálogo. Tente novamente quando a internet voltar.'}}
 function iniciar(){const locais=lerCacheLocal();if(locais.length){mostrar(locais,'cópia local');status.textContent=locais.length+' vídeos · atualizando em segundo plano…'}else{status.textContent='Abrindo catálogo…'}atualizarCatalogo().catch(e=>{console.warn('Atualização do catálogo falhou',e);if(!app.childElementCount){status.classList.add('erro');status.textContent='Não foi possível atualizar. Confira a conexão e tente novamente.'}})}
 iniciar();
+// Marca esta versão para facilitar a atualização do PWA instalado.
+document.documentElement.dataset.livrodeface='css-carrosseis-v3';
 let eventoInstalacao;const botaoInstalar=document.getElementById('instalar');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();eventoInstalacao=e;botaoInstalar.style.display='inline-block'});botaoInstalar.addEventListener('click',async()=>{if(!eventoInstalacao)return;eventoInstalacao.prompt();await eventoInstalacao.userChoice;eventoInstalacao=null;botaoInstalar.style.display='none'});
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(e=>console.warn('Service worker indisponível',e)));
 </script>
