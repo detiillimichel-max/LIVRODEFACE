@@ -26,51 +26,36 @@ header{padding:26px 18px 18px;background:#07152e;border-bottom:1px solid #24324b
 <p id="status" role="status" aria-live="polite">Carregando seus links…</p><main id="app" aria-label="Carrosséis de vídeos"></main>
 <script>
 const app=document.getElementById('app'),status=document.getElementById('status');
+const CACHE_KEY='livrodeface-catalogo-v2';
+const FONTES=['./catalog.json','./catalogo/candidatos.json'];
 function urlFacebookValida(value){if(typeof value!=='string'||!value.trim())return false;try{const u=new URL(value);return u.protocol==='https:'&&(u.hostname==='facebook.com'||u.hostname.endsWith('.facebook.com')||u.hostname==='fb.watch')}catch{return false}}
 function criarLink(url){const a=document.createElement('a');a.className='abrir';a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Abrir no Facebook';return a}
+function normalizar(dados){const unicos=new Map();for(const v of Array.isArray(dados)?dados:[]){if(v&&urlFacebookValida(v.url)&&!unicos.has(v.url))unicos.set(v.url,v)}return [...unicos.values()]}
 function renderizar(videos){
- const grupos=new Map();
- for(const v of videos){const cat=String(v.categoria||'Meus vídeos salvos').trim()||'Meus vídeos salvos';if(!grupos.has(cat))grupos.set(cat,[]);grupos.get(cat).push(v)}
+ const grupos=new Map();for(const v of videos){const cat=String(v.categoria||'Meus vídeos salvos').trim()||'Meus vídeos salvos';if(!grupos.has(cat))grupos.set(cat,[]);grupos.get(cat).push(v)}
  app.replaceChildren();
- for(const [categoria,lista] of grupos){
-  const sec=document.createElement('section');sec.className='secao';const h=document.createElement('h2');h.textContent=categoria+' · '+lista.length;const faixa=document.createElement('div');faixa.className='carrossel';
-  for(const video of lista){
-   const card=document.createElement('article');card.className='card';
-   const iframe=document.createElement('iframe');iframe.className='player'+(/facebook\\.com\\/(?:[^/]+\\/)?reel\\//i.test(video.url)?' vertical':'');iframe.loading='lazy';iframe.title=String(video.titulo||'Vídeo salvo do Facebook');iframe.allow='autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share';iframe.allowFullscreen=true;iframe.referrerPolicy='strict-origin-when-cross-origin';iframe.src='https://www.facebook.com/plugins/video.php?href='+encodeURIComponent(video.url)+'&show_text=false';
-   const titulo=document.createElement('p');titulo.className='titulo';titulo.textContent=String(video.titulo||'Vídeo salvo do Facebook');
-   const acoes=document.createElement('div');acoes.className='acoes';acoes.append(criarLink(video.url));card.append(iframe,titulo,acoes);faixa.append(card)
-  }sec.append(h,faixa);app.append(sec)
+ for(const [categoria,lista] of grupos){const sec=document.createElement('section');sec.className='secao';const h=document.createElement('h2');h.textContent=categoria+' · '+lista.length;const faixa=document.createElement('div');faixa.className='carrossel';
+  for(const video of lista){const card=document.createElement('article');card.className='card';const iframe=document.createElement('iframe');iframe.className='player'+(/facebook\.com\/(?:[^/]+\/)?reel\//i.test(video.url)?' vertical':'');iframe.loading='lazy';iframe.title=String(video.titulo||'Vídeo salvo do Facebook');iframe.allow='autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share';iframe.allowFullscreen=true;iframe.referrerPolicy='strict-origin-when-cross-origin';iframe.src='https://www.facebook.com/plugins/video.php?href='+encodeURIComponent(video.url)+'&show_text=false';const titulo=document.createElement('p');titulo.className='titulo';titulo.textContent=String(video.titulo||'Vídeo salvo do Facebook');const acoes=document.createElement('div');acoes.className='acoes';acoes.append(criarLink(video.url));card.append(iframe,titulo,acoes);faixa.append(card)}
+  sec.append(h,faixa);app.append(sec)
  }
 }
-async function buscarJson(caminho){
- const resposta=await fetch(caminho,{cache:'no-store',signal:AbortSignal.timeout(12000)});
- if(!resposta.ok)throw new Error('HTTP '+resposta.status+' em '+caminho);
- return resposta.json()
+function mostrar(videos,rotulo){if(!videos.length)return;renderizar(videos);status.classList.remove('erro');status.textContent=videos.length+' links exibidos'+(rotulo?' · '+rotulo:'')+'.'}
+function lerCacheLocal(){try{const dados=JSON.parse(localStorage.getItem(CACHE_KEY)||'[]');return normalizar(dados)}catch{return []}}
+function salvarCacheLocal(videos){try{localStorage.setItem(CACHE_KEY,JSON.stringify(videos))}catch(e){console.warn('Cache local indisponível',e)}}
+async function buscarJson(caminho){const resposta=await fetch(caminho,{cache:'no-cache'});if(!resposta.ok)throw new Error('HTTP '+resposta.status+' em '+caminho);return resposta.json()}
+async function atualizarCatalogo(){
+ const resultados=await Promise.allSettled(FONTES.map(buscarJson));let dados=[],fontesOk=0;
+ for(const r of resultados){if(r.status==='fulfilled'&&Array.isArray(r.value)){dados.push(...r.value);fontesOk++}}
+ const videos=normalizar(dados);
+ if(videos.length){salvarCacheLocal(videos);mostrar(videos,'catálogo atualizado');return}
+ if(!app.childElementCount){status.classList.add('erro');status.textContent='Sem conexão com o catálogo. Tente atualizar a página quando a internet voltar.'}
 }
-async function carregar(){
- status.textContent='Carregando seus links…';
- let erros=0;const dados=[];
- const resultados=await Promise.allSettled([
-  buscarJson('./catalog.json?v=3.7.10'),
-  buscarJson('./catalogo/candidatos.json?v=3.7.10')
- ]);
- for(const r of resultados){
-  if(r.status!=='fulfilled'||!Array.isArray(r.value)){erros++;continue}
-  dados.push(...r.value)
- }
- const unicos=new Map();
- for(const v of dados){if(v&&urlFacebookValida(v.url)&&!unicos.has(v.url))unicos.set(v.url,v)}
- const videos=[...unicos.values()];
- status.textContent=videos.length+' links de vídeo carregados'+(erros?' (uma fonte indisponível)':'')+'.';
- if(!videos.length){
-  status.classList.add('erro');
-  app.innerHTML='<section class="vazio">Não foi possível carregar os links agora. Toque em atualizar a página e tente novamente. Se o problema continuar, vamos verificar os arquivos do catálogo.</section>';
-  return
- }
- status.classList.remove('erro');
- renderizar(videos)
+function iniciar(){
+ const locais=lerCacheLocal();
+ if(locais.length){mostrar(locais,'cópia local');status.textContent=locais.length+' links exibidos · verificando atualizações…'}
+ else {status.textContent='Abrindo catálogo…'}
+ atualizarCatalogo().catch(e=>{console.warn('Atualização do catálogo falhou',e);if(!app.childElementCount){status.classList.add('erro');status.textContent='Não foi possível atualizar o catálogo. Tentaremos novamente quando abrir o app com conexão.'}});
 }
-carregar();
+iniciar();
 let eventoInstalacao;const botaoInstalar=document.getElementById('instalar');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();eventoInstalacao=e;botaoInstalar.style.display='inline-block'});botaoInstalar.addEventListener('click',async()=>{if(!eventoInstalacao)return;eventoInstalacao.prompt();await eventoInstalacao.userChoice;eventoInstalacao=null;botaoInstalar.style.display='none'});
-if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(e=>console.warn('Service worker indisponível',e)));
-</script></body></html>
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(e=>console.warn('Service worker indisponível',e)));</script></body></html>
