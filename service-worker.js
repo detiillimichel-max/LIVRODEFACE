@@ -1,5 +1,5 @@
-const CACHE_NAME = 'livrodeface-shell-v2';
-const CATALOG_CACHE = 'livrodeface-catalog-v2';
+const CACHE_NAME = 'livrodeface-shell-v3';
+const CATALOG_CACHE = 'livrodeface-catalog-v3';
 const SHELL = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -22,7 +22,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
-  const isCatalog = url.pathname.endsWith('/catalog.json') || url.pathname.endsWith('/candidatos.json');
+  const isCatalog = url.pathname.endsWith('/catalog.json') || url.pathname.endsWith('/candidatos.json') || url.pathname.endsWith('/colecoes.json');
   const cacheName = isCatalog ? CATALOG_CACHE : CACHE_NAME;
   const refresh = caches.open(cacheName).then((cache) =>
     fetch(request).then((response) => {
