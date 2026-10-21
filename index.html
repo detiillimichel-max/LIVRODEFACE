@@ -53,10 +53,29 @@ main{padding:0 0 34px;min-height:35vh}
 <script>
 const app=document.getElementById('app'),status=document.getElementById('status');
 const CACHE_KEY='livrodeface-catalogo-v3';
-const FONTES=['./catalogo/colecoes.json','./catalog.json','./catalogo/candidatos.json'];
+const FONTES=['./catalogo/colecoes.json','./catalogo/candidatos.json','./catalog.json'];
 function urlFacebookValida(value){if(typeof value!=='string'||!value.trim())return false;try{const u=new URL(value);return u.protocol==='https:'&&(u.hostname==='facebook.com'||u.hostname.endsWith('.facebook.com')||u.hostname==='fb.watch')}catch{return false}}
 function criarLink(url){const a=document.createElement('a');a.className='abrir';a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Abrir no Facebook';return a}
-function normalizar(dados){const unicos=new Map();for(const v of Array.isArray(dados)?dados:[]){if(!v||!urlFacebookValida(v.url))continue;const colecoes=Array.isArray(v.colecoes)?v.colecoes:(v.colecao?[v.colecao]:[]);const chave=v.url+'|'+(colecoes.join('|')||v.categoria||'');if(!unicos.has(chave))unicos.set(chave,{...v,colecoes})}return [...unicos.values()]}
+function normalizar(dados){
+ const unicos=new Map();
+ for(const v of Array.isArray(dados)?dados:[]){
+  if(!v||!urlFacebookValida(v.url))continue;
+  const url=v.url.trim();
+  const nomes=Array.isArray(v.colecoes)?v.colecoes:(v.colecao?[v.colecao]:[]);
+  const colecoes=[...new Set(nomes.map(n=>String(n||'').trim()).filter(Boolean))];
+  if(!unicos.has(url))unicos.set(url,{...v,url,colecoes});
+  else{
+   const atual=unicos.get(url);
+   atual.colecoes=[...new Set([...(atual.colecoes||[]),...colecoes])];
+   if((!atual.titulo||atual.titulo==='Vídeo salvo do Facebook')&&v.titulo)atual.titulo=v.titulo;
+   if(!atual.thumbnail&&v.thumbnail)atual.thumbnail=v.thumbnail;
+   if(!atual.thumbnail_url&&v.thumbnail_url)atual.thumbnail_url=v.thumbnail_url;
+   if(!atual.nomePagina&&v.nomePagina)atual.nomePagina=v.nomePagina;
+   if(!atual.categoria&&v.categoria)atual.categoria=v.categoria;
+  }
+ }
+ return [...unicos.values()];
+}
 function criarPlayer(card,video){const capa=card.querySelector('.capa');if(!capa)return;const wrap=document.createElement('div');wrap.className='player-wrap';const iframe=document.createElement('iframe');iframe.className='player';iframe.loading='eager';iframe.title=String(video.titulo||'Vídeo salvo do Facebook');iframe.allow='autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share';iframe.allowFullscreen=true;iframe.referrerPolicy='strict-origin-when-cross-origin';iframe.src='https://www.facebook.com/plugins/video.php?href='+encodeURIComponent(video.url)+'&show_text=false';wrap.append(iframe);capa.replaceWith(wrap)}
 function renderizar(videos){
  const grupos=new Map();
