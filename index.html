@@ -42,17 +42,33 @@ function renderizar(videos){
   }sec.append(h,faixa);app.append(sec)
  }
 }
+async function buscarJson(caminho){
+ const resposta=await fetch(caminho,{cache:'no-store',signal:AbortSignal.timeout(12000)});
+ if(!resposta.ok)throw new Error('HTTP '+resposta.status+' em '+caminho);
+ return resposta.json()
+}
 async function carregar(){
- try{
-  const respostas=await Promise.allSettled([fetch('./catalog.json',{cache:'no-store'}),fetch('./catalogo/candidatos.json',{cache:'no-store'})]);
-  const dados=[];let erros=0;
-  for(const r of respostas){if(r.status!=='fulfilled'||!r.value.ok){erros++;continue}try{const j=await r.value.json();if(Array.isArray(j))dados.push(...j)}catch{erros++}}
-  const unicos=new Map();for(const v of dados){if(v&&urlFacebookValida(v.url)&&!unicos.has(v.url))unicos.set(v.url,v)}
-  const videos=[...unicos.values()];
-  status.textContent=videos.length+' links de vídeo carregados'+(erros?' (uma fonte indisponível)':'')+'.';
-  if(!videos.length){app.innerHTML='<section class="vazio">Nenhum link encontrado. O arquivo com seus links exportados precisa estar em catalogo/candidatos.json. Quando o link não aceitar incorporação, use “Abrir no Facebook”.</section>';return}
-  renderizar(videos)
- }catch(e){status.textContent='Erro ao carregar os links.';status.classList.add('erro');app.textContent=e.message||'Erro inesperado.'}
+ status.textContent='Carregando seus links…';
+ let erros=0;const dados=[];
+ const resultados=await Promise.allSettled([
+  buscarJson('./catalog.json?v=3.7.10'),
+  buscarJson('./catalogo/candidatos.json?v=3.7.10')
+ ]);
+ for(const r of resultados){
+  if(r.status!=='fulfilled'||!Array.isArray(r.value)){erros++;continue}
+  dados.push(...r.value)
+ }
+ const unicos=new Map();
+ for(const v of dados){if(v&&urlFacebookValida(v.url)&&!unicos.has(v.url))unicos.set(v.url,v)}
+ const videos=[...unicos.values()];
+ status.textContent=videos.length+' links de vídeo carregados'+(erros?' (uma fonte indisponível)':'')+'.';
+ if(!videos.length){
+  status.classList.add('erro');
+  app.innerHTML='<section class="vazio">Não foi possível carregar os links agora. Toque em atualizar a página e tente novamente. Se o problema continuar, vamos verificar os arquivos do catálogo.</section>';
+  return
+ }
+ status.classList.remove('erro');
+ renderizar(videos)
 }
 carregar();
 let eventoInstalacao;const botaoInstalar=document.getElementById('instalar');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();eventoInstalacao=e;botaoInstalar.style.display='inline-block'});botaoInstalar.addEventListener('click',async()=>{if(!eventoInstalacao)return;eventoInstalacao.prompt();await eventoInstalacao.userChoice;eventoInstalacao=null;botaoInstalar.style.display='none'});
