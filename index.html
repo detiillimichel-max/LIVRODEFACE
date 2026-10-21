@@ -13,13 +13,13 @@ header{padding:26px 18px 18px;background:#07152e;border-bottom:1px solid #24324b
 #instalar{display:none;border:0;border-radius:999px;padding:10px 14px;background:#1677e8;color:#fff;font-weight:700}
 #status{margin:16px auto;max-width:1200px;padding:12px 16px;background:#1c1c20;border-radius:10px;color:#ddd}
 #status.erro{border:1px solid #a33}.secao{margin:22px 0 28px}.secao h2{font-size:1.1rem;margin:0 18px 12px;color:#fff}
-.carrossel{display:flex;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;padding:0 18px 12px;scrollbar-width:thin}
-.card{flex:0 0 min(82vw,340px);min-width:0;overflow:hidden;scroll-snap-align:start;border:1px solid #303036;border-radius:14px;background:#1b1b20}
+.carrossel{display:flex;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:9vw;padding:0 max(9vw,18px) 12px;scrollbar-width:thin}
+.card{flex:0 0 min(82vw,340px);min-width:0;overflow:hidden;scroll-snap-align:center;border:1px solid #303036;border-radius:14px;background:#1b1b20}
 .player{display:block;width:100%;height:auto;aspect-ratio:16/9;border:0;background:#000;object-fit:contain}.player.vertical{aspect-ratio:9/16}
 .titulo{padding:12px;margin:0;font-weight:600;line-height:1.4;overflow-wrap:anywhere}.acoes{display:flex;gap:8px;padding:0 12px 12px}
 .abrir{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;background:#1769d2;color:white;padding:10px 13px;border-radius:8px;font-size:.9rem;font-weight:650}
 .vazio{margin:18px;padding:18px;border-radius:12px;background:#1b1b20;color:#ddd;line-height:1.5}
-@media(min-width:800px){.card{flex-basis:320px}header{padding:30px 24px} .carrossel{padding-left:24px}.secao h2{margin-left:24px}}
+@media(min-width:800px){.card{flex-basis:320px}header{padding:30px 24px}.carrossel{padding-left:max(calc((100vw - 320px)/2),24px);padding-right:max(calc((100vw - 320px)/2),24px);scroll-padding-inline:calc((100vw - 320px)/2)}.secao h2{margin-left:24px}}
 </style></head>
 <body>
 <header><div><div class="topo"><h1>LIVRODEFACE</h1><button id="instalar" type="button">Instalar app</button></div><p class="subtitulo">Seus vídeos salvos do Facebook, organizados em carrosséis.</p></div></header>
@@ -36,7 +36,7 @@ function renderizar(videos){
   const sec=document.createElement('section');sec.className='secao';const h=document.createElement('h2');h.textContent=categoria+' · '+lista.length;const faixa=document.createElement('div');faixa.className='carrossel';
   for(const video of lista){
    const card=document.createElement('article');card.className='card';
-   const iframe=document.createElement('iframe');iframe.className='player'+(/facebook\.com\/(?:[^/]+\/)?reel\//i.test(video.url)?' vertical':'');iframe.loading='lazy';iframe.title=String(video.titulo||'Vídeo salvo do Facebook');iframe.allow='autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share';iframe.allowFullscreen=true;iframe.referrerPolicy='strict-origin-when-cross-origin';iframe.src='https://www.facebook.com/plugins/video.php?href='+encodeURIComponent(video.url)+'&show_text=false';
+   const iframe=document.createElement('iframe');iframe.className='player'+(/facebook\\.com\\/(?:[^/]+\\/)?reel\\//i.test(video.url)?' vertical':'');iframe.loading='lazy';iframe.title=String(video.titulo||'Vídeo salvo do Facebook');iframe.allow='autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share';iframe.allowFullscreen=true;iframe.referrerPolicy='strict-origin-when-cross-origin';iframe.src='https://www.facebook.com/plugins/video.php?href='+encodeURIComponent(video.url)+'&show_text=false';
    const titulo=document.createElement('p');titulo.className='titulo';titulo.textContent=String(video.titulo||'Vídeo salvo do Facebook');
    const acoes=document.createElement('div');acoes.className='acoes';acoes.append(criarLink(video.url));card.append(iframe,titulo,acoes);faixa.append(card)
   }sec.append(h,faixa);app.append(sec)
@@ -44,7 +44,6 @@ function renderizar(videos){
 }
 async function carregar(){
  try{
-  // Primeiro tenta o catálogo de reprodução; se a exportação pessoal estiver em arquivo separado, carrega também.
   const respostas=await Promise.allSettled([fetch('./catalog.json',{cache:'no-store'}),fetch('./catalogo/candidatos.json',{cache:'no-store'})]);
   const dados=[];let erros=0;
   for(const r of respostas){if(r.status!=='fulfilled'||!r.value.ok){erros++;continue}try{const j=await r.value.json();if(Array.isArray(j))dados.push(...j)}catch{erros++}}
