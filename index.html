@@ -1,61 +1,83 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#07152e"><meta name="description" content="Seus vídeos salvos do Facebook no LIVRODEFACE.">
-<link rel="manifest" href="./manifest.json"><link rel="icon" href="./icon.svg" type="image/svg+xml">
-<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="LIVRODEFACE">
-<title>LIVRODEFACE — seus vídeos</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050b14">
+<meta name="description" content="Seus vídeos salvos do Facebook organizados por coleção no LIVRODEFACE.">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="LIVRODEFACE">
+<title>LIVRODEFACE — suas coleções</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0b0b0d;color:#f7f7f7;font-family:system-ui,-apple-system,sans-serif}
-header{padding:26px 18px 18px;background:#07152e;border-bottom:1px solid #24324b}header>div{max-width:1200px;margin:auto}
-.topo{display:flex;align-items:center;justify-content:space-between;gap:12px}h1{margin:0;font-size:clamp(1.5rem,5vw,2.2rem)}.subtitulo{margin:8px 0 0;color:#c3ccdc}
-#instalar{display:none;border:0;border-radius:999px;padding:10px 14px;background:#1677e8;color:#fff;font-weight:700}
-#status{margin:16px auto;max-width:1200px;padding:12px 16px;background:#1c1c20;border-radius:10px;color:#ddd}
-#status.erro{border:1px solid #a33}.secao{margin:22px 0 28px}.secao h2{font-size:1.1rem;margin:0 18px 12px;color:#fff}
-.carrossel{display:flex;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:9vw;padding:0 max(9vw,18px) 12px;scrollbar-width:thin}
-.card{flex:0 0 min(82vw,340px);min-width:0;overflow:hidden;scroll-snap-align:center;border:1px solid #303036;border-radius:14px;background:#1b1b20}
-.player{display:block;width:100%;height:auto;aspect-ratio:16/9;border:0;background:#000;object-fit:contain}.player.vertical{aspect-ratio:9/16}
-.titulo{padding:12px;margin:0;font-weight:600;line-height:1.4;overflow-wrap:anywhere}.acoes{display:flex;gap:8px;padding:0 12px 12px}
-.abrir{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;background:#1769d2;color:white;padding:10px 13px;border-radius:8px;font-size:.9rem;font-weight:650}
-.vazio{margin:18px;padding:18px;border-radius:12px;background:#1b1b20;color:#ddd;line-height:1.5}
-@media(min-width:800px){.card{flex-basis:320px}header{padding:30px 24px}.carrossel{padding-left:max(calc((100vw - 320px)/2),24px);padding-right:max(calc((100vw - 320px)/2),24px);scroll-padding-inline:calc((100vw - 320px)/2)}.secao h2{margin-left:24px}}
-</style></head>
+:root{color-scheme:dark;--fundo:#050b14;--painel:#111923;--borda:#25303d;--texto:#f5f7fa;--suave:#aab5c4;--azul:#1877e8}
+*{box-sizing:border-box}
+html{background:var(--fundo);scroll-behavior:smooth}
+body{margin:0;background:var(--fundo);color:var(--texto);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{padding:24px 18px 18px;background:#07152e;border-bottom:1px solid #24324b}
+header>div{max-width:1280px;margin:auto}
+.topo{display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{margin:0;font-size:clamp(1.5rem,5vw,2.2rem);letter-spacing:-.035em}
+.subtitulo{margin:7px 0 0;color:#c3ccdc;font-size:.98rem}
+#instalar{display:none;border:0;border-radius:999px;padding:10px 14px;background:var(--azul);color:white;font-weight:700}
+#status{margin:12px 18px 18px;padding:10px 13px;background:#111923;border:1px solid #1f2a38;border-radius:12px;color:#aab5c4;font-size:.85rem}
+#status:empty{display:none}#status.erro{border-color:#8f3e48;color:#ffd9dd}
+main{padding:0 0 34px;min-height:35vh}
+.secao{margin:24px 0 30px}
+.secao h2{font-size:clamp(1.08rem,3.8vw,1.4rem);font-weight:650;letter-spacing:-.025em;margin:0 18px 12px;color:#e7edf5}
+.carrossel{display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:18px;padding:0 18px 10px;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.carrossel::-webkit-scrollbar{display:none}
+.card{position:relative;flex:0 0 clamp(148px,43vw,220px);min-width:0;overflow:hidden;scroll-snap-align:start;border:1px solid var(--borda);border-radius:13px;background:#121923;contain:content}
+.capa{position:relative;display:block;width:100%;aspect-ratio:9/16;padding:0;border:0;overflow:hidden;background:linear-gradient(145deg,#182b43,#10151e 60%,#263a4b);color:white;cursor:pointer}
+.capa::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 38%,rgba(67,119,169,.32),transparent 55%),linear-gradient(0deg,rgba(0,0,0,.82),transparent 55%)}
+.capa::after{content:"";position:absolute;inset:auto 0 0;height:38%;background:linear-gradient(transparent,rgba(0,0,0,.65))}
+.capa-inicial{position:absolute;inset:12px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:750;font-size:clamp(1rem,3.5vw,1.6rem);line-height:1.1;letter-spacing:.02em;color:#e5edf7;overflow-wrap:anywhere;text-shadow:0 2px 10px #000}
+.play{position:absolute;z-index:2;left:50%;top:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.45);border:2px solid rgba(255,255,255,.92);box-shadow:0 3px 18px #0008}
+.play svg{width:22px;height:22px;fill:white;margin-left:3px}
+.player-wrap{position:relative;width:100%;aspect-ratio:9/16;background:#000}
+.player{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
+.titulo{padding:11px 11px 3px;margin:0;font-size:.9rem;font-weight:650;line-height:1.35;overflow-wrap:anywhere}
+.metadado{padding:0 11px 12px;margin:5px 0 0;color:var(--suave);font-size:.76rem;line-height:1.3}
+.acoes{padding:0 11px 12px}
+.abrir{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;background:#1769d2;color:white;padding:9px 11px;border-radius:8px;font-size:.82rem;font-weight:650;min-height:38px}
+.vazio{margin:18px;padding:18px;border-radius:12px;background:#111923;color:#ddd;line-height:1.5}
+@media(min-width:700px){header{padding:30px 24px}.subtitulo{font-size:1.1rem}#status{margin-left:24px;margin-right:24px}.secao h2{margin-left:24px}.carrossel{padding-left:24px;padding-right:24px;gap:15px}.card{flex-basis:clamp(190px,22vw,245px)}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
 <body>
-<header><div><div class="topo"><h1>LIVRODEFACE</h1><button id="instalar" type="button">Instalar app</button></div><p class="subtitulo">Seus vídeos salvos do Facebook, organizados em carrosséis.</p></div></header>
-<p id="status" role="status" aria-live="polite">Carregando seus links…</p><main id="app" aria-label="Carrosséis de vídeos"></main>
+<header><div><div class="topo"><h1>LIVRODEFACE</h1><button id="instalar" type="button">Instalar app</button></div><p class="subtitulo">Seus vídeos salvos do Facebook, organizados por coleção.</p></div></header>
+<p id="status" role="status" aria-live="polite">Abrindo seu catálogo…</p>
+<main id="app" aria-label="Coleções de vídeos salvos"></main>
 <script>
 const app=document.getElementById('app'),status=document.getElementById('status');
-const CACHE_KEY='livrodeface-catalogo-v2';
-const FONTES=['./catalog.json','./catalogo/candidatos.json'];
+const CACHE_KEY='livrodeface-catalogo-v3';
+const FONTES=['./catalogo/colecoes.json','./catalog.json','./catalogo/candidatos.json'];
 function urlFacebookValida(value){if(typeof value!=='string'||!value.trim())return false;try{const u=new URL(value);return u.protocol==='https:'&&(u.hostname==='facebook.com'||u.hostname.endsWith('.facebook.com')||u.hostname==='fb.watch')}catch{return false}}
 function criarLink(url){const a=document.createElement('a');a.className='abrir';a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Abrir no Facebook';return a}
-function normalizar(dados){const unicos=new Map();for(const v of Array.isArray(dados)?dados:[]){if(v&&urlFacebookValida(v.url)&&!unicos.has(v.url))unicos.set(v.url,v)}return [...unicos.values()]}
+function normalizar(dados){const unicos=new Map();for(const v of Array.isArray(dados)?dados:[]){if(!v||!urlFacebookValida(v.url))continue;const colecoes=Array.isArray(v.colecoes)?v.colecoes:(v.colecao?[v.colecao]:[]);const chave=v.url+'|'+(colecoes.join('|')||v.categoria||'');if(!unicos.has(chave))unicos.set(chave,{...v,colecoes})}return [...unicos.values()]}
+function criarPlayer(card,video){const capa=card.querySelector('.capa');if(!capa)return;const wrap=document.createElement('div');wrap.className='player-wrap';const iframe=document.createElement('iframe');iframe.className='player';iframe.loading='eager';iframe.title=String(video.titulo||'Vídeo salvo do Facebook');iframe.allow='autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share';iframe.allowFullscreen=true;iframe.referrerPolicy='strict-origin-when-cross-origin';iframe.src='https://www.facebook.com/plugins/video.php?href='+encodeURIComponent(video.url)+'&show_text=false';wrap.append(iframe);capa.replaceWith(wrap)}
 function renderizar(videos){
- const grupos=new Map();for(const v of videos){const cat=String(v.categoria||'Meus vídeos salvos').trim()||'Meus vídeos salvos';if(!grupos.has(cat))grupos.set(cat,[]);grupos.get(cat).push(v)}
+ const grupos=new Map();
+ for(const v of videos){const nomes=Array.isArray(v.colecoes)&&v.colecoes.length?v.colecoes:(v.colecao?[v.colecao]:[v.categoria||'Meus vídeos salvos']);for(const nomeBruto of nomes){const nome=String(nomeBruto||'Meus vídeos salvos').trim()||'Meus vídeos salvos';if(!grupos.has(nome))grupos.set(nome,[]);grupos.get(nome).push(v)}}
  app.replaceChildren();
- for(const [categoria,lista] of grupos){const sec=document.createElement('section');sec.className='secao';const h=document.createElement('h2');h.textContent=categoria+' · '+lista.length;const faixa=document.createElement('div');faixa.className='carrossel';
-  for(const video of lista){const card=document.createElement('article');card.className='card';const iframe=document.createElement('iframe');iframe.className='player'+(/facebook\.com\/(?:[^/]+\/)?reel\//i.test(video.url)?' vertical':'');iframe.loading='lazy';iframe.title=String(video.titulo||'Vídeo salvo do Facebook');iframe.allow='autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share';iframe.allowFullscreen=true;iframe.referrerPolicy='strict-origin-when-cross-origin';iframe.src='https://www.facebook.com/plugins/video.php?href='+encodeURIComponent(video.url)+'&show_text=false';const titulo=document.createElement('p');titulo.className='titulo';titulo.textContent=String(video.titulo||'Vídeo salvo do Facebook');const acoes=document.createElement('div');acoes.className='acoes';acoes.append(criarLink(video.url));card.append(iframe,titulo,acoes);faixa.append(card)}
+ for(const [categoria,listaBruta] of grupos){const vistos=new Set(),lista=listaBruta.filter(v=>{if(vistos.has(v.url))return false;vistos.add(v.url);return true});if(!lista.length)continue;
+  const sec=document.createElement('section');sec.className='secao';const h=document.createElement('h2');h.textContent=categoria+'  ›';const faixa=document.createElement('div');faixa.className='carrossel';
+  for(const video of lista){const card=document.createElement('article');card.className='card';const capa=document.createElement('button');capa.type='button';capa.className='capa';capa.setAttribute('aria-label','Reproduzir vídeo: '+String(video.titulo||categoria));const inicial=document.createElement('span');inicial.className='capa-inicial';inicial.textContent=String(video.nomePagina||video.titulo||categoria);const play=document.createElement('span');play.className='play';play.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5c0-.8.9-1.3 1.6-.9l10 6.5a1.1 1.1 0 0 1 0 1.8l-10 6.5c-.7.4-1.6-.1-1.6-.9z"/></svg>';capa.append(inicial,play);capa.addEventListener('click',()=>criarPlayer(card,video),{once:true});
+   const titulo=document.createElement('p');titulo.className='titulo';titulo.textContent=String(video.titulo||'Vídeo salvo do Facebook');const meta=document.createElement('p');meta.className='metadado';meta.textContent=String(video.nomePagina||'Facebook');const acoes=document.createElement('div');acoes.className='acoes';acoes.append(criarLink(video.url));card.append(capa,titulo,meta,acoes);faixa.append(card)}
   sec.append(h,faixa);app.append(sec)
  }
 }
-function mostrar(videos,rotulo){if(!videos.length)return;renderizar(videos);status.classList.remove('erro');status.textContent=videos.length+' links exibidos'+(rotulo?' · '+rotulo:'')+'.'}
-function lerCacheLocal(){try{const dados=JSON.parse(localStorage.getItem(CACHE_KEY)||'[]');return normalizar(dados)}catch{return []}}
+function mostrar(videos,rotulo){if(!videos.length)return false;renderizar(videos);status.classList.remove('erro');status.textContent=videos.length+' vídeos disponíveis'+(rotulo?' · '+rotulo:'');return true}
+function lerCacheLocal(){try{return normalizar(JSON.parse(localStorage.getItem(CACHE_KEY)||'[]'))}catch{return []}}
 function salvarCacheLocal(videos){try{localStorage.setItem(CACHE_KEY,JSON.stringify(videos))}catch(e){console.warn('Cache local indisponível',e)}}
 async function buscarJson(caminho){const resposta=await fetch(caminho,{cache:'no-cache'});if(!resposta.ok)throw new Error('HTTP '+resposta.status+' em '+caminho);return resposta.json()}
-async function atualizarCatalogo(){
- const resultados=await Promise.allSettled(FONTES.map(buscarJson));let dados=[],fontesOk=0;
- for(const r of resultados){if(r.status==='fulfilled'&&Array.isArray(r.value)){dados.push(...r.value);fontesOk++}}
- const videos=normalizar(dados);
- if(videos.length){salvarCacheLocal(videos);mostrar(videos,'catálogo atualizado');return}
- if(!app.childElementCount){status.classList.add('erro');status.textContent='Sem conexão com o catálogo. Tente atualizar a página quando a internet voltar.'}
-}
-function iniciar(){
- const locais=lerCacheLocal();
- if(locais.length){mostrar(locais,'cópia local');status.textContent=locais.length+' links exibidos · verificando atualizações…'}
- else {status.textContent='Abrindo catálogo…'}
- atualizarCatalogo().catch(e=>{console.warn('Atualização do catálogo falhou',e);if(!app.childElementCount){status.classList.add('erro');status.textContent='Não foi possível atualizar o catálogo. Tentaremos novamente quando abrir o app com conexão.'}});
-}
+async function atualizarCatalogo(){const resultados=await Promise.allSettled(FONTES.map(buscarJson));let dados=[],fontesOk=0;for(const r of resultados){if(r.status==='fulfilled'&&Array.isArray(r.value)){dados.push(...r.value);fontesOk++}}const videos=normalizar(dados);if(videos.length){salvarCacheLocal(videos);mostrar(videos,'catálogo atualizado');return}if(!app.childElementCount){status.classList.add('erro');status.textContent='Não foi possível encontrar o catálogo. Tente novamente quando a internet voltar.'}}
+function iniciar(){const locais=lerCacheLocal();if(locais.length){mostrar(locais,'cópia local');status.textContent=locais.length+' vídeos · atualizando em segundo plano…'}else{status.textContent='Abrindo catálogo…'}atualizarCatalogo().catch(e=>{console.warn('Atualização do catálogo falhou',e);if(!app.childElementCount){status.classList.add('erro');status.textContent='Não foi possível atualizar. Confira a conexão e tente novamente.'}})}
 iniciar();
 let eventoInstalacao;const botaoInstalar=document.getElementById('instalar');window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();eventoInstalacao=e;botaoInstalar.style.display='inline-block'});botaoInstalar.addEventListener('click',async()=>{if(!eventoInstalacao)return;eventoInstalacao.prompt();await eventoInstalacao.userChoice;eventoInstalacao=null;botaoInstalar.style.display='none'});
-if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(e=>console.warn('Service worker indisponível',e)));</script></body></html>
+if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(e=>console.warn('Service worker indisponível',e)));
+</script>
+</body>
+</html>
