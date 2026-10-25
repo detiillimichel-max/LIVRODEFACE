@@ -37,6 +37,14 @@ main{padding:0 0 34px;min-height:35vh}
 .play svg{width:22px;height:22px;fill:white;margin-left:3px}
 .player-wrap{position:relative;width:100%;aspect-ratio:9/16;background:#000}
 .player{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
+/* Player em tela cheia; não altera os cartões nem os carrosséis. */
+.player-modal{position:fixed;inset:0;z-index:99999;display:grid;grid-template-rows:auto minmax(0,1fr);background:#000;color:#fff;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);width:100%;height:100%;height:100dvh}
+.player-modal-top{display:flex;align-items:center;justify-content:flex-end;min-height:52px;padding:6px 12px;background:#080b10}
+.player-fechar{border:1px solid #ffffff55;border-radius:999px;background:#202733;color:#fff;font:600 16px system-ui,sans-serif;padding:10px 16px;min-height:42px}
+.player-modal-area{position:relative;min-height:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000}
+.player-modal .player-wrap{position:relative;width:100%;height:100%;aspect-ratio:auto;background:#000}
+.player-modal .player{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
+
 .titulo{padding:11px 11px 3px;margin:0;font-size:.9rem;font-weight:650;line-height:1.35;overflow-wrap:anywhere}
 .metadado{padding:0 11px 12px;margin:5px 0 0;color:var(--suave);font-size:.76rem;line-height:1.3}
 .acoes{padding:0 11px 12px}
@@ -76,14 +84,33 @@ function normalizar(dados){
  }
  return [...unicos.values()];
 }
-function criarPlayer(card,video){const capa=card.querySelector('.capa');if(!capa)return;const wrap=document.createElement('div');wrap.className='player-wrap';const iframe=document.createElement('iframe');iframe.className='player';iframe.loading='eager';iframe.title=String(video.titulo||'Vídeo salvo do Facebook');iframe.allow='autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share';iframe.allowFullscreen=true;iframe.referrerPolicy='strict-origin-when-cross-origin';iframe.src='https://www.facebook.com/plugins/video.php?href='+encodeURIComponent(video.url)+'&show_text=false';wrap.append(iframe);capa.replaceWith(wrap)}
+let playerModalAtivo=null;
+function fecharPlayer(){
+ const modal=playerModalAtivo;if(!modal)return;playerModalAtivo=null;
+ const limpar=()=>{modal.remove();document.body.style.overflow='';};
+ if(document.fullscreenElement===modal&&document.exitFullscreen)document.exitFullscreen().catch(()=>{}).finally(limpar);else limpar();
+}
+function criarPlayer(card,video){
+ if(playerModalAtivo)fecharPlayer();
+ const modal=document.createElement('section');modal.className='player-modal';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-label','Player de vídeo em tela cheia');
+ const topo=document.createElement('div');topo.className='player-modal-top';
+ const fechar=document.createElement('button');fechar.type='button';fechar.className='player-fechar';fechar.textContent='✕ Fechar player';fechar.setAttribute('aria-label','Fechar player e voltar às coleções');
+ const area=document.createElement('div');area.className='player-modal-area';
+ const wrap=document.createElement('div');wrap.className='player-wrap';
+ const iframe=document.createElement('iframe');iframe.className='player';iframe.loading='eager';iframe.title=String(video.titulo||'Vídeo salvo do Facebook');iframe.allow='autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen';iframe.allowFullscreen=true;iframe.referrerPolicy='strict-origin-when-cross-origin';iframe.src='https://www.facebook.com/plugins/video.php?href='+encodeURIComponent(video.url)+'&show_text=false';
+ fechar.addEventListener('click',fecharPlayer);modal.addEventListener('keydown',e=>{if(e.key==='Escape'&&playerModalAtivo===modal){e.preventDefault();fecharPlayer()}});
+ topo.append(fechar);wrap.append(iframe);area.append(wrap);modal.append(topo,area);document.body.append(modal);
+ playerModalAtivo=modal;document.body.style.overflow='hidden';fechar.focus({preventScroll:true});
+ // Chrome Android: pede fullscreen a partir do toque. Se não for permitido, o modal fixo continua cobrindo a tela.
+ if(typeof modal.requestFullscreen==='function'){const tentativa=modal.requestFullscreen({navigationUI:'hide'});if(tentativa&&typeof tentativa.catch==='function')tentativa.catch(()=>{});}
+}
 function renderizar(videos){
  const grupos=new Map();
  for(const v of videos){const nomes=Array.isArray(v.colecoes)&&v.colecoes.length?v.colecoes:(v.colecao?[v.colecao]:[v.categoria||'Meus vídeos salvos']);for(const nomeBruto of nomes){const nome=String(nomeBruto||'Meus vídeos salvos').trim()||'Meus vídeos salvos';if(!grupos.has(nome))grupos.set(nome,[]);grupos.get(nome).push(v)}}
  app.replaceChildren();
  for(const [categoria,listaBruta] of grupos){const vistos=new Set(),lista=listaBruta.filter(v=>{if(vistos.has(v.url))return false;vistos.add(v.url);return true});if(!lista.length)continue;
   const sec=document.createElement('section');sec.className='secao';const h=document.createElement('h2');h.textContent=categoria+'  ›';const faixa=document.createElement('div');faixa.className='carrossel';
-  for(const video of lista){const card=document.createElement('article');card.className='card';const capa=document.createElement('button');capa.type='button';capa.className='capa';capa.setAttribute('aria-label','Reproduzir vídeo: '+String(video.titulo||categoria));const inicial=document.createElement('span');inicial.className='capa-inicial';inicial.textContent=String(video.nomePagina||video.titulo||categoria);const play=document.createElement('span');play.className='play';play.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5c0-.8.9-1.3 1.6-.9l10 6.5a1.1 1.1 0 0 1 0 1.8l-10 6.5c-.7.4-1.6-.1-1.6-.9z"/></svg>';capa.append(inicial,play);capa.addEventListener('click',()=>criarPlayer(card,video),{once:true});
+  for(const video of lista){const card=document.createElement('article');card.className='card';const capa=document.createElement('button');capa.type='button';capa.className='capa';capa.setAttribute('aria-label','Reproduzir vídeo: '+String(video.titulo||categoria));const inicial=document.createElement('span');inicial.className='capa-inicial';inicial.textContent=String(video.nomePagina||video.titulo||categoria);const play=document.createElement('span');play.className='play';play.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5c0-.8.9-1.3 1.6-.9l10 6.5a1.1 1.1 0 0 1 0 1.8l-10 6.5c-.7.4-1.6-.1-1.6-.9z"/></svg>';capa.append(inicial,play);capa.addEventListener('click',()=>criarPlayer(card,video));
    const titulo=document.createElement('p');titulo.className='titulo';titulo.textContent=String(video.titulo||'Vídeo salvo do Facebook');const meta=document.createElement('p');meta.className='metadado';meta.textContent=String(video.nomePagina||'Facebook');const acoes=document.createElement('div');acoes.className='acoes';acoes.append(criarLink(video.url));card.append(capa,titulo,meta,acoes);faixa.append(card)}
   sec.append(h,faixa);app.append(sec)
  }
