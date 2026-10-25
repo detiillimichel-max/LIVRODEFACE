@@ -1,4 +1,4 @@
-const CACHE_NAME = 'livrodeface-shell-v5';
+const CACHE_NAME = 'livrodeface-shell-v6';
 const CATALOG_CACHE = 'livrodeface-catalog-v3';
 const SHELL = ['./', './index.html', './manifest.json', './icon.svg'];
 
@@ -23,7 +23,28 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
   const isCatalog = url.pathname.endsWith('/catalog.json') || url.pathname.endsWith('/candidatos.json') || url.pathname.endsWith('/colecoes.json');
+  const isPage = request.mode === 'navigate' || url.pathname.endsWith('/index.html') || url.pathname.endsWith('/');
   const cacheName = isCatalog ? CATALOG_CACHE : CACHE_NAME;
+
+  // Páginas: prioriza a versão publicada no GitHub Pages e guarda uma cópia para uso offline.
+  // Catálogos e demais arquivos: mantém o comportamento de cache com atualização em segundo plano.
+  if (isPage) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const response = await fetch(request, { cache: 'no-cache' });
+        if (response.ok) {
+          await cache.put('./index.html', response.clone());
+          return response;
+        }
+      } catch (error) {
+        console.warn('Sem rede; usando a página em cache.', error);
+      }
+      return (await cache.match('./index.html')) || (await cache.match('./')) || Response.error();
+    })());
+    return;
+  }
+
   const refresh = caches.open(cacheName).then((cache) =>
     fetch(request).then((response) => {
       if (response.ok) cache.put(request, response.clone());
@@ -31,7 +52,6 @@ self.addEventListener('fetch', (event) => {
     })
   );
 
-  // Registra a atualização em segundo plano durante o evento, sem atrasar a resposta em cache.
   event.waitUntil(refresh.then(() => undefined).catch(() => {}));
   event.respondWith((async () => {
     const cache = await caches.open(cacheName);
