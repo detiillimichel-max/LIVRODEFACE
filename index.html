@@ -114,7 +114,7 @@ function renderizar(videos){
   for(const video of lista){const card=document.createElement('article');card.className='card';const capa=document.createElement('button');capa.type='button';capa.className='capa';capa.setAttribute('aria-label','Reproduzir vídeo: '+String(video.titulo||categoria));const inicial=document.createElement('span');inicial.className='capa-inicial';inicial.textContent=String(video.nomePagina||video.titulo||categoria);
    const capasAlternativas=['cidade-historica.jpg','claquete-cinema.jpg','escultura-classica.jpg','filme-antigo.jpg','lago-montanhas.jpg','mapa-antigo.jpg','terra-do-espaco.jpg','trem-a-vapor.jpg','via-lactea.jpg','videos-antigos.jpg'];
    const chaveCapa=String(video.url||video.titulo||categoria);let somaCapa=0;for(let i=0;i<chaveCapa.length;i++)somaCapa=(somaCapa+chaveCapa.charCodeAt(i))>>>0;
-   const imagemOriginal=[video.thumbnail,video.thumbnail_url,video.thumb,video.image,video.image_url,video.preview].find(valor=>typeof valor==='string'&&/^https?:\\/\\//i.test(valor.trim()));
+   const imagemOriginal=[video.thumbnail,video.thumbnail_url,video.thumb,video.image,video.image_url,video.preview].find(valor=>typeof valor==='string'&&/^https?:\/\//i.test(valor.trim()));
    const imagem=document.createElement('img');imagem.className='capa-imagem';imagem.alt='';imagem.loading='lazy';imagem.decoding='async';
    if(imagemOriginal){imagem.src=imagemOriginal.trim();imagem.onload=()=>capa.classList.add('has-imagem');imagem.onerror=()=>{imagem.remove();capa.classList.remove('has-imagem');};}
    else{imagem.src='./assets/capas/'+capasAlternativas[somaCapa%capasAlternativas.length];imagem.onload=()=>capa.classList.add('has-imagem');imagem.onerror=()=>{imagem.remove();capa.classList.remove('has-imagem');};}
