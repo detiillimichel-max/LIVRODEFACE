@@ -1,4 +1,4 @@
-const CACHE_NAME = 'livrodeface-shell-v4';
+const CACHE_NAME = 'livrodeface-shell-v5';
 const CATALOG_CACHE = 'livrodeface-catalog-v3';
 const SHELL = ['./', './index.html', './manifest.json', './icon.svg'];
 
